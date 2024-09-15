@@ -18,7 +18,19 @@ else
     echo "dos2unix is not installed. Please install it to fix line endings, or ensure the script is in Unix format."
 fi
 
-# Step 1: Install Miniconda if not already installed
+# Step 1: Check if Python is installed
+if ! command -v python &> /dev/null; then
+    echo "Python not found. Installing Python..."
+    sudo apt update
+    sudo apt install python3 -y
+    sudo apt install python3-pip -y
+    echo "Python installation complete."
+else
+    echo "Python is already installed. Version:"
+    python --version
+fi
+
+# Step 2: Install Miniconda if not already installed
 if [ ! -d "$CONDA_PATH" ]; then
     echo "Downloading Miniconda..."
     wget -q $CONDA_INSTALLER_URL -O $CONDA_INSTALLER
@@ -31,7 +43,7 @@ else
     echo "Miniconda already installed at $CONDA_PATH."
 fi
 
-# Step 2: Initialize Conda if not already initialized
+# Step 3: Initialize Conda if not already initialized
 if ! grep -q "conda initialize" ~/.bashrc; then
     echo "Initializing Conda..."
     eval "$($CONDA_PATH/bin/conda shell.bash hook)"
@@ -42,7 +54,7 @@ else
     eval "$($CONDA_PATH/bin/conda shell.bash hook)"
 fi
 
-# Step 3: Verify Conda installation
+# Step 4: Verify Conda installation
 if ! command -v conda &> /dev/null; then
     echo "Conda command not found. Please check the installation."
     exit 1
@@ -51,7 +63,7 @@ else
     conda --version
 fi
 
-# Step 4: Create or Update Conda Environment with required Python version
+# Step 5: Create or Update Conda Environment with required Python version
 if [ -f "$YML_FILE" ]; then
     echo "Environment file found at $YML_FILE. Creating or updating environment from it..."
     conda env create --force -f "$YML_FILE"
@@ -64,11 +76,11 @@ else
     conda env export > "$YML_FILE"
 fi
 
-# Step 5: Activate Conda environment
+# Step 6: Activate Conda environment
 echo "Activating environment '$ENV_NAME'..."
 conda activate $ENV_NAME
 
-# Step 6: Install packages from requirements.txt if it exists
+# Step 7: Install packages from requirements.txt if it exists
 if [ -f "$REQUIREMENTS_FILE" ]; then
     echo "Installing packages from $REQUIREMENTS_FILE..."
     pip install -r "$REQUIREMENTS_FILE"
@@ -77,7 +89,8 @@ else
 fi
 
 echo "Environment setup complete. '$ENV_NAME' environment with Python $PYTHON_VERSION is ready with necessary packages installed."
-# Step 7: Run Nonstationary_Transformer scripts
+
+# Step 8: Run Nonstationary_Transformer scripts
 echo "Running Nonstationary_Transformer scripts..."
 
 # Run these scripts and display any errors
