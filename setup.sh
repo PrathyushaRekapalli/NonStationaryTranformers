@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Stop the script on any error
+set -e
+
 # Define variables
 CONDA_INSTALLER_URL="https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh"
 CONDA_INSTALLER="Miniconda3-latest-Linux-x86_64.sh"
@@ -82,23 +85,23 @@ else
 fi
 
 # Step 4: Create or Update Conda Environment
-if [ -f "$YML_FILE" ]; then
-    echo "Environment file found at $YML_FILE. Creating or updating environment from it..."
-    conda env create -f "$YML_FILE"
+if conda env list | grep -q "$ENV_NAME"; then
+    echo "Environment '$ENV_NAME' already exists. Activating..."
 else
-    echo "No .yml file found. Creating a new environment '$ENV_NAME' with Python $PYTHON_VERSION..."
+    echo "Creating environment '$ENV_NAME' with Python $PYTHON_VERSION..."
     conda create --name $ENV_NAME python=$PYTHON_VERSION -y
+    echo "Activating environment '$ENV_NAME'..."
     conda activate $ENV_NAME
 
     echo "Exporting the new environment to $YML_FILE..."
     conda env export > "$YML_FILE"
 fi
 
-# Step 5: Activate Conda environment
+# Activate Conda environment
 echo "Activating environment '$ENV_NAME'..."
-conda activate $ENV_NAME
+source $CONDA_PATH/bin/activate $ENV_NAME
 
-# Step 6: Install packages from requirements.txt if it exists
+# Step 5: Install packages from requirements.txt if it exists
 if [ -f "$REQUIREMENTS_FILE" ]; then
     echo "Installing packages from $REQUIREMENTS_FILE..."
     pip install -r "$REQUIREMENTS_FILE"
@@ -106,27 +109,31 @@ else
     echo "Requirements file not found. Skipping package installation."
 fi
 
-# Step 7: Check if a GPU is available and install GPU dependencies
+# Step 6: Check if a GPU is available and install GPU dependencies
 if check_gpu; then
     echo "Installing CUDA and cuDNN dependencies..."
 
+    # Prevent interactive prompts
+    export DEBIAN_FRONTEND=noninteractive
+
     # Add NVIDIA CUDA repository key and repo
     sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub
-    sudo add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/ /"
-    sudo apt-get update
+    sudo add-apt-repository -y "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/ /"
+    sudo apt-get update -y
 
     # Install CUDA
     sudo apt-get install -y cuda
 
     # Add cuDNN repository key and repo
     sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/7fa2af80.pub
-    sudo add-apt-repository "deb https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu2004/x86_64/ /"
-    sudo apt-get update
+    sudo add-apt-repository -y "deb https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu2004/x86_64/ /"
+    sudo apt-get update -y
 
     # Install cuDNN
     sudo apt-get install -y libcudnn8 libcudnn8-dev
 
     # Create symbolic links for cuDNN libraries if not present
+    echo "Checking and creating symbolic links for cuDNN libraries..."
     if [ ! -f /usr/local/cuda/lib64/libcudnn.so ]; then
         sudo ln -s /usr/lib/x86_64-linux-gnu/libcudnn.so /usr/local/cuda/lib64/libcudnn.so
         sudo ln -s /usr/lib/x86_64-linux-gnu/libcudnn.so.8 /usr/local/cuda/lib64/libcudnn.so.8
@@ -140,7 +147,7 @@ else
     echo "Skipping GPU dependencies since no GPU was detected."
 fi
 
-# Step 8: Run Nonstationary_Transformer scripts
+# Step 7: Run Nonstationary_Transformer scripts
 echo "Running Nonstationary_Transformer scripts..."
 bash ./scripts/ILI_script/ns_Transformer.sh
 bash ./scripts/Exchange_script/ns_Transformer.sh
